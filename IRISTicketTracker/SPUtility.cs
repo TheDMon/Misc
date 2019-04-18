@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Security;
+using JnJ.EAS.TicketTracker.Core;
+using JnJ.EAS.TicketTracker.Core.Models;
 using Microsoft.SharePoint.Client;
 using SP = Microsoft.SharePoint.Client;
 
@@ -8,10 +10,10 @@ namespace IRISTicketTracker
 {
     public class SPUtility
     {
-        string siteUrl = Program.GetAppSettingValue("SharePointCRSiteUrl");
-        string listTitle = Program.GetAppSettingValue("SharePointCRListName");
+        string siteUrl = ConfigurationHelper.GetAppSettingValue("SharePointCRSiteUrl");
+        string listTitle = ConfigurationHelper.GetAppSettingValue("SharePointCRListName");
 
-        public List<ChangeEntity> ReadData()
+        public List<ChangeRequest> ReadData()
         {
             // creates a new SharePoint context 	
             // passing the parameters	
@@ -31,10 +33,10 @@ namespace IRISTicketTracker
             clientContext.ExecuteQuery();
 
             // iterates the list printing the title of each list item 	
-            List<ChangeEntity> lstChanges = new List<ChangeEntity>();
+            List<ChangeRequest> lstChanges = new List<ChangeRequest>();
             foreach (SP.ListItem item in itemCollection)
             {
-                var change = new ChangeEntity();
+                var change = new ChangeRequest();
                 change.ID = (int)item["ID"];
                 change.Application = item["Application_x0020_Name"].ToString().Trim();
                 change.Title = item["Title"].ToString().Trim();
@@ -57,25 +59,8 @@ namespace IRISTicketTracker
         private SharePointOnlineCredentials SetCredentials()
         {
             SecureString passWord = new SecureString();
-            foreach (char c in Program.GetAppSettingValue("SharePointLoginPWD").ToCharArray()) passWord.AppendChar(c);
-            return new SharePointOnlineCredentials(Program.GetAppSettingValue("SharePointLoginID"), passWord);
+            foreach (char c in ConfigurationHelper.GetAppSettingValue("SharePointLoginPWD").ToCharArray()) passWord.AppendChar(c);
+            return new SharePointOnlineCredentials(ConfigurationHelper.GetAppSettingValue("SharePointLoginID"), passWord);
         }
-
-
-    }
-
-    public class ChangeEntity
-    {
-        public int ID { get; set; }
-        public string Application { get; set; }
-        public string Title { get; set; }
-        public string SOW { get; set; }
-        public string Assignee { get; set; }
-        public string Status { get; set; }
-        public string ResolutionMethod { get; set; }        
-        public DateTime? ActualResolutionDate { get; set; }
-        public DateTime Created { get; set; }
-        public DateTime Modified { get; set; }
-        public DateTime? Resolved { get; set; }
-    }
+    } 
 }

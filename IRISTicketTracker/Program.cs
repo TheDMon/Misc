@@ -12,6 +12,8 @@ using Microsoft.Extensions.Configuration;
 using NLog;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using JnJ.EAS.TicketTracker.Core;
+using JnJ.EAS.TicketTracker.Core.Models;
 
 namespace IRISTicketTracker
 {
@@ -22,7 +24,7 @@ namespace IRISTicketTracker
         static List<TicketVolumn> lstAppBaselineMonthly = new List<TicketVolumn>();
         static List<Report> lstSRReport = new List<Report>();
         static List<IncidentReport> lstIncReport = new List<IncidentReport>();
-        static List<ChangeEntity> lstChanges = new List<ChangeEntity>();
+        static List<ChangeRequest> lstChanges = new List<ChangeRequest>();
 
         private static Logger logger = LogManager.GetLogger("fileLogger");
         private static Logger errorLogger = LogManager.GetLogger("errorFileLogger");
@@ -34,10 +36,10 @@ namespace IRISTicketTracker
             var stopWatch = Stopwatch.StartNew();
             logger.Info("Program started");
 
-            LoadConfig();
+            ConfigurationHelper.LoadConfig();
 
             //let's get invalidIncCodes from app settings and populate the list object
-            invalidIncCodes = GetAppSettingValue("InvalidIncidentResolutionCodes").Split(',').ToList();
+            invalidIncCodes = ConfigurationHelper.GetAppSettingValue("InvalidIncidentResolutionCodes").Split(',').ToList();
 
             Parallel.Invoke(
                     () => LoadBaselineData(),
@@ -46,32 +48,11 @@ namespace IRISTicketTracker
                     () => GetChangesRequests()
                 );
 
-            //LoadBaselineData();
-            //OpenIncidentReport();            
-            //OpenServiceRequestReport();
-            //GetChangesRequests();
             RunCalculations();
 
             Console.WriteLine(stopWatch.Elapsed.TotalMilliseconds);
             logger.Info("Elapsed time: " + stopWatch.Elapsed.TotalMilliseconds + " ms");
             logger.Info("==================================== Program Ended =========================================");
-        }
-        
-        protected static void LoadConfig()
-        {
-            var builder = new ConfigurationBuilder()
-                        .SetBasePath(Directory.GetCurrentDirectory())
-                        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-
-            configuration = builder.Build();
-        }
-
-        public static string GetAppSettingValue(string key)
-        {
-            return configuration.GetSection("AppSettings").GetChildren()
-                                .Where(x => x.Key == key)
-                                .Select(x => x.Value)
-                                .FirstOrDefault();
         }
 
         protected static void GetChangesRequests()
@@ -106,7 +87,7 @@ namespace IRISTicketTracker
                 Console.WriteLine("Loading baseline data.... please, wait...");
                 logger.Info("Loading baseline data.... please, wait...");
 
-                string json = File.ReadAllText(GetAppSettingValue("BaselineJSONPath"));
+                string json = File.ReadAllText(ConfigurationHelper.GetAppSettingValue("BaselineJSONPath"));
                 lstAppBaselineYrly = JsonConvert.DeserializeObject<List<TicketVolumn>>(json);
 
                 foreach (var item in lstAppBaselineYrly)
@@ -150,7 +131,7 @@ namespace IRISTicketTracker
                 IWebDriver driver;
                 driver = new ChromeDriver(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), options)
                 {
-                    Url = GetAppSettingValue("ServiceRequestReportUrl")
+                    Url = ConfigurationHelper.GetAppSettingValue("ServiceRequestReportUrl")
                 };
 
                 Console.WriteLine("Browsing IRIS SR report to pull Service Request data.... please, wait...");
@@ -218,7 +199,7 @@ namespace IRISTicketTracker
                 IWebDriver driver;
                 driver = new ChromeDriver(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), options)
                 {
-                    Url = GetAppSettingValue("IncidentReportUrl")
+                    Url = ConfigurationHelper.GetAppSettingValue("IncidentReportUrl")
                 };
 
                 Console.WriteLine("Browsing IRIS report to pull Incident data.... please, wait...");
@@ -334,7 +315,7 @@ namespace IRISTicketTracker
                 Console.WriteLine("Final report has been generated!");
                 logger.Info("Final report has been generated!");
 
-                if (GetAppSettingValue("EnableEmailNotification") == "true")
+                if (ConfigurationHelper.GetAppSettingValue("EnableEmailNotification") == "true")
                 {
                     Console.WriteLine("Sending report as email to the recepients.... please, wait... ");
                     logger.Info("Sending report as email to the recepients.... please, wait... ");
@@ -342,7 +323,7 @@ namespace IRISTicketTracker
                     string mailBody = "<html><head></head><body>" + html.ToString() + "</body></html>";
 
                     MailUtility mailUtil = new MailUtility();
-                    mailUtil.SendMail(GetAppSettingValue("MailFrom"), GetAppSettingValue("MailTo"), GetAppSettingValue("MailSubject"), mailBody);
+                    mailUtil.SendMail(ConfigurationHelper.GetAppSettingValue("MailFrom"), ConfigurationHelper.GetAppSettingValue("MailTo"), ConfigurationHelper.GetAppSettingValue("MailSubject"), mailBody);
 
                     Console.WriteLine("Mail sent!");
                     logger.Info("Mail sent!");
@@ -358,56 +339,5 @@ namespace IRISTicketTracker
         }
     }
 
-    public class Application
-    {
-        public string ApplicationID { get; set; }
-        public string ApplicationName { get; set; }
-        public string Group { get; set; }
-        public string SLA { get; set; }
-    }
-
-    public class Report : Application
-    {
-        public string Numnber { get; set; }
-        public string Priority { get; set; }
-        public string State { get; set; }
-        public string AssignedTo { get; set; }
-        public string ShortDescription { get; set; }
-        public string AssignmentGroup { get; set; }
-        public string TaskType { get; set; }
-        public string Opened { get; set; }
-        public string CustTime { get; set; }
-        public string Duration { get; set; }
-        public string Status { get; set; }
-        public string TaskState { get; set; }
-    }
-
-    public class TicketVolumn : Application
-    {
-        public int ServiceRequest { get; set; }
-        public int ChangeRequest { get; set; }
-        public int NonTicketed { get; set; }
-        public int Incidents { get; set; }
-        public int Problem { get; set; }
-        public int Total { get; set; }
-        public bool IsActive { get; set; }
-    }
-
-    public class IncidentReport : Application
-    {
-        public string Numnber { get; set; }
-        public string Priority { get; set; }
-        public string ShortDescription { get; set; }
-        public string State { get; set; }
-        public string AssignedTo { get; set; }
-        public string Opened { get; set; }
-        public string Resolved { get; set; }
-        public string Closed { get; set; }
-        public string Category { get; set; }
-        public string Status { get; set; }
-        public string AssignmentGroup { get; set; }
-        public string ResolutionCategory { get; set; }
-        public string ResolutionCode { get; set; }
-        public string KCS { get; set; }
-    }
+    
 }
