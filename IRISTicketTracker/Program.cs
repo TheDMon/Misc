@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using JnJ.EAS.TicketTracker.Core;
 using JnJ.EAS.TicketTracker.Core.Models;
+using System.Threading;
 
 namespace IRISTicketTracker
 {
@@ -127,6 +128,7 @@ namespace IRISTicketTracker
 
                 var options = new ChromeOptions();
                 options.AddArgument("headless");
+                options.AddArgument("--DNS-prefetch-disable");
 
                 IWebDriver driver;
                 driver = new ChromeDriver(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), options)
@@ -139,39 +141,68 @@ namespace IRISTicketTracker
                 IWebElement frame = (new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
                     .Until(d => d.FindElement(By.Id("gsft_main")));
 
-                driver.SwitchTo().Frame(frame);
+                driver.SwitchTo().Frame(frame);                
 
-                // let's build a list of tickets
-                var tbody = (new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
-                        .Until(d => d.FindElement(By.ClassName("list2_body")));
+                var totalRows = Convert.ToInt32((new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
+                        .Until(d => d.FindElement(By.XPath("//*[contains(@id,'_total_rows')]")).Text));
 
+                var lastRow = Convert.ToInt32((new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
+                        .Until(d => d.FindElement(By.XPath("//*[contains(@id,'_last_row')]")).Text));
 
-                int rowCount = tbody.FindElements(By.TagName("tr")).Count;
-                int colCount = (tbody.FindElements(By.TagName("tr"))[0]).FindElements(By.ClassName("vt")).Count;
+                var counter = 0;
 
-                foreach (var rowItem in tbody.FindElements(By.TagName("tr")))
+                do
                 {
-                    var cells = rowItem.FindElements(By.ClassName("vt"));
-                    Report report = new Report()
-                    {
-                        Numnber = cells[0].Text,
-                        ApplicationID = cells[1].Text,
-                        ApplicationName = cells[2].Text,
-                        Priority = cells[3].Text,
-                        State = cells[4].Text,
-                        AssignedTo = cells[5].Text,
-                        ShortDescription = cells[6].Text,
-                        AssignmentGroup = cells[7].Text,
-                        TaskType = cells[8].Text,
-                        Opened = cells[9].Text,
-                        CustTime = cells[10].Text,
-                        Duration = cells[11].Text,
-                        Status = cells[12].Text,
-                        TaskState = cells[13].Text
-                    };
+                    // let's build a list of tickets
+                    var tbody = (new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
+                            .Until(d => d.FindElement(By.ClassName("list2_body")));
 
-                    lstSRReport.Add(report);
+
+                    int rowCount = tbody.FindElements(By.TagName("tr")).Count;
+                    int colCount = (tbody.FindElements(By.TagName("tr"))[0]).FindElements(By.ClassName("vt")).Count;
+
+                    foreach (var rowItem in tbody.FindElements(By.TagName("tr")))
+                    {
+                        var cells = rowItem.FindElements(By.ClassName("vt"));
+                        Report report = new Report()
+                        {
+                            Numnber = cells[0].Text,
+                            ApplicationID = cells[1].Text,
+                            ApplicationName = cells[2].Text,
+                            Priority = cells[3].Text,
+                            State = cells[4].Text,
+                            AssignedTo = cells[5].Text,
+                            ShortDescription = cells[6].Text,
+                            AssignmentGroup = cells[7].Text,
+                            TaskType = cells[8].Text,
+                            Opened = cells[9].Text,
+                            CustTime = cells[10].Text,
+                            Duration = cells[11].Text,
+                            Status = cells[12].Text,
+                            TaskState = cells[13].Text
+                        };
+
+                        lstSRReport.Add(report);
+                    }
+
+                    if (counter != 0)
+                    {
+                        //let's hit next page button 
+                        var nextBtn = (new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
+                            .Until(d => d.FindElement(By.XPath("//*[contains(@id,'_next')]")));
+
+                        nextBtn.Click();
+
+                        Thread.Sleep(30000);
+
+                        lastRow = Convert.ToInt32((new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
+                            .Until(d => d.FindElement(By.XPath("//*[contains(@id,'_last_row')]")).Text));
+
+                    }
+
+                    counter++;
                 }
+                while (lastRow < totalRows);               
 
                 driver.Close();
                 driver.Quit();
@@ -210,39 +241,68 @@ namespace IRISTicketTracker
 
                 driver.SwitchTo().Frame(frame);
 
-                // let's build a list of tickets
-                var tbody = (new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
-                        .Until(d => d.FindElement(By.ClassName("list2_body")));
+                var totalRows = Convert.ToInt32((new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
+                        .Until(d => d.FindElement(By.XPath("//*[contains(@id,'_total_rows')]")).Text));
 
+                var lastRow = Convert.ToInt32((new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
+                        .Until(d => d.FindElement(By.XPath("//*[contains(@id,'_last_row')]")).Text));
 
-                int rowCount = tbody.FindElements(By.TagName("tr")).Count;
-                int colCount = (tbody.FindElements(By.TagName("tr"))[0]).FindElements(By.ClassName("vt")).Count;
+                var counter = 0;
 
-                foreach (var rowItem in tbody.FindElements(By.TagName("tr")))
+                do
                 {
-                    var cells = rowItem.FindElements(By.ClassName("vt"));
-                    IncidentReport report = new IncidentReport()
-                    {
-                        Numnber = cells[0].Text,
-                        ApplicationID = cells[1].Text,
-                        ApplicationName = cells[2].Text,
-                        Priority = cells[3].Text,
-                        ShortDescription = cells[4].Text,
-                        State = cells[5].Text,
-                        AssignedTo = cells[6].Text,
-                        Opened = cells[7].Text,
-                        Resolved = cells[8].Text,
-                        Closed = cells[9].Text,
-                        Category = cells[10].Text,
-                        Status = cells[11].Text,
-                        AssignmentGroup = cells[12].Text,
-                        ResolutionCategory = cells[13].Text,
-                        ResolutionCode = cells[14].Text,
-                        KCS = cells[15].Text
-                    };
+                    // let's build a list of tickets
+                    var tbody = (new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
+                            .Until(d => d.FindElement(By.ClassName("list2_body")));
 
-                    lstIncReport.Add(report);
+
+                    int rowCount = tbody.FindElements(By.TagName("tr")).Count;
+                    int colCount = (tbody.FindElements(By.TagName("tr"))[0]).FindElements(By.ClassName("vt")).Count;
+
+                    foreach (var rowItem in tbody.FindElements(By.TagName("tr")))
+                    {
+                        var cells = rowItem.FindElements(By.ClassName("vt"));
+                        IncidentReport report = new IncidentReport()
+                        {
+                            Numnber = cells[0].Text,
+                            ApplicationID = cells[1].Text,
+                            ApplicationName = cells[2].Text,
+                            Priority = cells[3].Text,
+                            ShortDescription = cells[4].Text,
+                            State = cells[5].Text,
+                            AssignedTo = cells[6].Text,
+                            Opened = cells[7].Text,
+                            Resolved = cells[8].Text,
+                            Closed = cells[9].Text,
+                            Category = cells[10].Text,
+                            Status = cells[11].Text,
+                            AssignmentGroup = cells[12].Text,
+                            ResolutionCategory = cells[13].Text,
+                            ResolutionCode = cells[14].Text,
+                            KCS = cells[15].Text
+                        };
+
+                        lstIncReport.Add(report);
+                    }
+
+                    if (counter != 0)
+                    {
+                        //let's hit next page button 
+                        var nextBtn = (new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
+                            .Until(d => d.FindElement(By.XPath("//*[contains(@id,'_next')]")));
+
+                        nextBtn.Click();
+
+                        Thread.Sleep(30000);
+
+                        lastRow = Convert.ToInt32((new WebDriverWait(driver, TimeSpan.FromMinutes(1)))
+                            .Until(d => d.FindElement(By.XPath("//*[contains(@id,'_last_row')]")).Text));
+
+                    }
+
+                    counter++;
                 }
+                while (lastRow < totalRows);
 
                 driver.Close();
                 driver.Quit();
